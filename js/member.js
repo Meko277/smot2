@@ -90,7 +90,7 @@ document.addEventListener("DOMContentLoaded", () => {
         (item) => `
             <div class="report-item">
                 <div class="report-item-input-group">
-                    <label>${item.name} (Expected: ${item.expected})</label>
+                    <label>${item.name}</label>
                     <div class="input-wrapper">
                         <input type="number" class="actual-qty" data-name="${item.name}" data-expected="${item.expected}" min="0" required>
                         <span class="validation-icon"></span>
