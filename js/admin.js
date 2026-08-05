@@ -22,6 +22,20 @@ document.addEventListener("DOMContentLoaded", () => {
       window.location.href = "login.html";
     } else {
       // If user is logged in, initialize the admin page.
+      const adminGreeting = document.getElementById("adminGreeting");
+      if (adminGreeting) {
+        const emailToName = {
+          "meriettehani2@gmail.com": "meriett",
+          "georgeeskander2025eng@gmail.com": "george",
+          "mina.sameh1904@gmail.com": "mina",
+        };
+        const adminName = emailToName[user.email];
+        if (adminName) {
+          adminGreeting.textContent = `Hi, ${adminName}`;
+        } else {
+          adminGreeting.textContent = `Hi, Admin`;
+        }
+      }
       initializeAdminPage();
     }
   });
@@ -31,7 +45,6 @@ document.addEventListener("DOMContentLoaded", () => {
     setupEventListeners();
     loadEvents();
     loadReports();
-    loadMembers();
   }
 
   // Load events
@@ -48,8 +61,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const div = document.createElement("div");
         div.className = "event-card";
         div.innerHTML = `
-                    <h3>${event.name}</h3>
-                    <p>Date: ${event.date}</p>
+                    <h3>${event.name} <span class="event-date">(${event.date})</span></h3>
                     <div class="event-items">
                         ${event.items.map((item) => `<span>${item.name}: ${item.expected}</span>`).join("")}
                     </div>
@@ -117,31 +129,32 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Load reports
   function loadReports() {
-    const reportsList = document.getElementById("reportsList");
-    if (!reportsList) return;
+    const reportEventsList = document.getElementById("reportEventsList");
+    if (!reportEventsList) return;
 
-    const q = query(collection(db, "reports"), orderBy("createdAt", "desc"));
+    const q = query(collection(db, "reports"), orderBy("createdAt", "asc"));
 
     onSnapshot(q, async (snapshot) => {
       // Optimization: Fetch all events once to avoid N+1 queries.
       const eventsSnapshot = await getDocs(collection(db, "events"));
       const eventMap = new Map();
-      eventsSnapshot.forEach((doc) => eventMap.set(doc.id, doc.data().name));
+      eventsSnapshot.forEach((doc) => eventMap.set(doc.id, doc.data()));
 
-      reportsList.innerHTML = "";
+      // Group reports by eventId
+      const reportsByEvent = {};
+
       for (const doc of snapshot.docs) {
         const report = doc.data();
-        const eventName = eventMap.get(report.eventId) || "Unknown Event";
+        const eventName = eventMap.get(report.eventId)?.name || "Unknown Event";
+        if (eventName === "Unknown Event") continue;
 
         const div = document.createElement("div");
         div.className = "report-card";
-        const submittedBy = report.leaderName
-          ? `by ${report.leaderName} (Leader) & ${report.supportName} (Support)`
-          : "";
         div.innerHTML = `
-                    <h4>Event: ${eventName}</h4>
-                    <p>Submitted ${submittedBy}</p>
-                    <p>Submitted: ${new Date(report.createdAt.toDate()).toLocaleString()}</p>
+                    <p><strong>Submitted:</strong> ${new Date(
+                      report.createdAt.toDate(),
+                    ).toLocaleString()}</p>
+                    <p>Submitted by: ${report.leaderName} & ${report.supportName}</p>
                     ${report.discrepancies
                       .map(
                         (d) => `
@@ -164,54 +177,50 @@ document.addEventListener("DOMContentLoaded", () => {
                       )
                       .join("")}
                 `;
-        reportsList.appendChild(div);
+
+        if (!reportsByEvent[report.eventId]) {
+          reportsByEvent[report.eventId] = {
+            name: eventName,
+            date: eventMap.get(report.eventId)?.date || "",
+            reports: [],
+          };
+        }
+        reportsByEvent[report.eventId].reports.push(div);
       }
 
-      // Animate the report cards
+      // Render the report event cards
+      reportEventsList.innerHTML = "";
+      for (const eventId in reportsByEvent) {
+        const eventData = reportsByEvent[eventId];
+        const reportEventCard = document.createElement("div");
+        reportEventCard.className = "report-event-card";
+        reportEventCard.innerHTML = `
+          <div class="report-event-header">
+            <h3>${eventData.name} <span class="event-date">(${eventData.date})</span></h3>
+            <span class="report-count-badge">${eventData.reports.length} report(s)</span>
+          </div>
+          <div class="reports-placeholder hidden"></div>
+        `;
+
+        const placeholder = reportEventCard.querySelector(
+          ".reports-placeholder",
+        );
+        eventData.reports.forEach((reportDiv) =>
+          placeholder.appendChild(reportDiv),
+        );
+
+        reportEventsList.appendChild(reportEventCard);
+      }
+
+      // Animate the report event cards
       anime({
-        targets: ".reports-container .report-card",
-        translateY: [50, 0],
+        targets: ".report-event-card",
+        translateY: [30, 0],
         opacity: [0, 1],
         delay: anime.stagger(100),
+        easing: "easeOutExpo",
       });
     });
-  }
-
-  // Load members
-  function loadMembers() {
-    const membersList = document.getElementById("membersList");
-    if (!membersList) return;
-
-    const q = query(collection(db, "members"), orderBy("leaderName"));
-
-    onSnapshot(q, (snapshot) => {
-      membersList.innerHTML = "";
-      snapshot.forEach((doc) => {
-        const member = doc.data();
-        const div = document.createElement("div");
-        div.className = "member-card";
-        div.innerHTML = `
-          <p><strong>Leader:</strong> ${member.leaderName}</p>
-          <p><strong>Support:</strong> ${member.supportName}</p>
-          <button class="btn btn-danger btn-small delete-member-btn" data-id="${doc.id}">
-              Delete
-          </button>
-        `;
-        membersList.appendChild(div);
-      });
-    });
-  }
-
-  // Delete member
-  async function deleteMember(memberId) {
-    if (!confirm("Are you sure you want to delete this member pair?")) {
-      return;
-    }
-    try {
-      await deleteDoc(doc(db, "members", memberId));
-    } catch (error) {
-      console.error("Error deleting member:", error);
-    }
   }
 
   // Delete event and associated reports
@@ -314,29 +323,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    // Add member
-    const memberForm = document.getElementById("memberForm");
-    if (memberForm) {
-      memberForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const leaderName = document.getElementById("leaderNameInput").value;
-        const supportName = document.getElementById("supportNameInput").value;
-
-        if (leaderName && supportName) {
-          try {
-            await addDoc(collection(db, "members"), {
-              leaderName,
-              supportName,
-            });
-            memberForm.reset();
-          } catch (error) {
-            console.error("Error adding member:", error);
-            alert("Failed to add member.");
-          }
-        }
-      });
-    }
-
     // Logout
     const logoutBtn = document.getElementById("logoutBtn");
     if (logoutBtn) {
@@ -351,9 +337,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Event delegation for delete buttons
+    // Event delegation for the events list (Edit and Delete)
     const eventsList = document.getElementById("eventsList");
     if (eventsList) {
       eventsList.addEventListener("click", async (e) => {
+        // Handle Delete
         if (e.target.classList.contains("delete-event-btn")) {
           const eventId = e.target.dataset.id;
           if (
@@ -369,18 +357,40 @@ document.addEventListener("DOMContentLoaded", () => {
       // Event delegation for edit buttons
       eventsList.addEventListener("click", (e) => {
         if (e.target.classList.contains("edit-event-btn")) {
+        } else if (e.target.classList.contains("edit-event-btn")) {
+          // Handle Edit
           const eventId = e.target.dataset.id;
           startEditEvent(eventId);
         }
       });
     }
 
-    // Event delegation for deleting members
-    const membersList = document.getElementById("membersList");
-    if (membersList) {
-      membersList.addEventListener("click", (e) => {
-        if (e.target.classList.contains("delete-member-btn")) {
-          deleteMember(e.target.dataset.id);
+    // Event delegation for expanding reports in the reports section
+    const reportEventsList = document.getElementById("reportEventsList");
+    if (reportEventsList) {
+      reportEventsList.addEventListener("click", (e) => {
+        const header = e.target.closest(".report-event-header");
+        if (header) {
+          const card = header.closest(".report-event-card");
+          const placeholder = card.querySelector(".reports-placeholder");
+          const isExpanded = card.classList.toggle("expanded");
+
+          // Stop any ongoing animation on the placeholder children
+          anime.remove(placeholder.children);
+
+          if (isExpanded) {
+            placeholder.classList.remove("hidden");
+            anime({
+              targets: placeholder.children,
+              translateY: [-20, 0],
+              opacity: [0, 1],
+              delay: anime.stagger(80),
+              easing: "easeOutExpo",
+            });
+          } else {
+            // Instantly hide on collapse
+            placeholder.classList.add("hidden");
+          }
         }
       });
     }
