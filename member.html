@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smot - Member View</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <nav class="navbar">
+        <h1>Smot Member</h1>
+        <a href="member-login.html" class="btn btn-secondary">Switch User</a>
+      </nav>
+
+      <section class="section">
+        <h2>Events</h2>
+        <div id="eventsList" class="events-container"></div>
+      </section>
+
+      <section id="reportSection" class="section hidden">
+        <h2>Submit Report for: <span id="selectedEventName"></span></h2>
+        <form id="reportForm" novalidate>
+          <div id="reportItems"></div>
+          <button type="submit" class="btn">Submit Report</button>
+        </form>
+      </section>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script type="module" src="js/member.js"></script>
+  </body>
+</html>
