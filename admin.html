@@ -13,7 +13,10 @@
   <body>
     <div class="container">
       <nav class="navbar">
-        <h1>Smot Admin Dashboard</h1>
+        <div>
+          <h1>Smot Admin Dashboard</h1>
+          <h2 id="adminGreeting" style="margin: 0; font-size: 1.2rem; font-weight: 400;"></h2>
+        </div>
         <div>
           <a
             href="member-login.html"
@@ -68,37 +71,10 @@
         <div id="eventsList" class="events-container"></div>
       </section>
 
-      <section class="section">
-        <h2>Manage Members</h2>
-        <form id="memberForm">
-          <div class="item-row">
-            <input
-              type="text"
-              id="leaderNameInput"
-              placeholder="Leader Name"
-              required
-            />
-            <input
-              type="text"
-              id="supportNameInput"
-              placeholder="Support Name"
-              required
-            />
-          </div>
-          <button type="submit" class="btn">Add Member</button>
-        </form>
-      </section>
-
-      <section class="section">
-        <h2>Current Members</h2>
-        <div id="membersList" class="members-container"></div>
-      </section>
-
-      <section class="section">
+      <section class="section" id="reportsSection">
         <h2>Reports</h2>
-        <div id="reportsList" class="reports-container"></div>
+        <div id="reportEventsList" class="reports-container"></div>
       </section>
-    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
